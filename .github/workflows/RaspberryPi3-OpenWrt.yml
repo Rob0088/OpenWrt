@@ -52,16 +52,34 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        docker rmi $(docker images -q)
+        # 只有在有镜像时才删除
+        docker images -q | xargs -r docker rmi
+        
+        # 删除不必要的文件和目录
         sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d/* /usr/local/lib/android $AGENT_TOOLSDIRECTORY /opt/ghc /opt/hostedtoolcache/CodeQL
+        
+        # 仅当有包时才执行删除
         sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+        
+        # 更新apt-get的包列表
         sudo -E apt-get -y update
+        
+        # 初始化构建环境
         sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        
+        # 安装依赖
         sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
+        
+        # 重新加载 systemd 服务
         sudo -E systemctl daemon-reload
+        
+        # 自动删除不再需要的包并清理缓存
         sudo -E apt-get -y autoremove --purge
         sudo -E apt-get -y clean
+        
+        # 设置时区
         sudo timedatectl set-timezone "$TZ"
+
 
     - name: Combine Disks
       uses: easimon/maximize-build-space@master
